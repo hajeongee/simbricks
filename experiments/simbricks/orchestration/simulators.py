@@ -393,6 +393,155 @@ class QemuHost(HostSim):
         return cmd
 
 
+class Gem5Core(Simulator):
+        
+    def __init__(self, node_config: NodeConfig):
+        super().__init__()
+        self.node_config = node_config
+        """Config for the simulated host. """
+        self.name = ''
+        self.wait = False
+        """
+        `True` - Wait for process of simulator to exit.
+        `False` - Don't wait and instead stop the process.
+        """
+        self.sleep = 0
+        self.cpu_freq = '3GHz'
+
+        self.sync_mode = 0
+        self.sync_period = 500
+        self.mem_latency = 500
+
+        self.cpu_type_cp = 'X86KvmCPU'
+        self.cpu_type = 'TimingSimpleCPU'
+        self.extra_main_args = []
+        self.extra_config_args = []
+        self.variant = 'opt'
+        self.sim_mode = 'se' # or 'fs' for full system mode
+        self.idx = 0
+        self.cmd = 'cpu' # 'mem' for memory intensive workload
+
+        self.gem5_mem: tp.List[Gem5Mem] = []
+
+        # Todo: add gem5 numa mem
+        #self.net_directs: tp.List[NetSim] = []
+
+    def full_name(self):
+        return 'core.' + self.name
+
+    def add_mem(self, mem: Gem5Mem):
+        mem.name = self.name + '.' + mem.name
+        self.gem5_mem.append(mem)
+
+    def dependencies(self):
+        deps = []
+        for mem in self.gem5_mem:
+            deps.append(mem)
+        return deps
+
+    def wait_terminate(self):
+        return self.wait
+
+    def resreq_cores(self):
+        return 1
+
+    def resreq_mem(self):
+        return 1024
+
+    def prep_cmds(self, env):
+        return [f'mkdir -p {env.gem5_cpdir(self)}']
+    
+    def run_cmd(self, env):
+        cpu_type = self.cpu_type
+
+        if (self.sim_mode == 'se'):
+            gem5_script = f'{env.split_gem5_py_dir}/cpuside.py'
+        else: #Todo add full system script
+            pass
+
+        cmd = f'{env.split_gem5_path(self.variant)} --outdir={env.gem5_outdir(self)} '
+        cmd += ' '.join(self.extra_main_args)
+        cmd += (
+            f' {gem5_script} '
+            f'--simbricks-shm={env.cpu_shm_path(self)} '
+            f'--simbricks-uxsoc={env.cpu_mem_path(self)} '
+            f'--simbricks-cpu={self.idx} '
+            f'--cmd={self.cmd} '
+        )
+        return cmd
+
+
+class Gem5Mem(Simulator):
+        
+    def __init__(self, node_config: NodeConfig):
+        super().__init__()
+        self.node_config = node_config
+        """Config for the simulated host. """
+        self.name = ''
+        self.wait = False
+        """
+        `True` - Wait for process of simulator to exit.
+        `False` - Don't wait and instead stop the process.
+        """
+        self.sleep = 0
+        self.cpu_freq = '3GHz'
+
+        self.sync_mode = 0
+        self.sync_period = 500
+        self.mem_latency = 500
+
+        self.cpu_type_cp = 'X86KvmCPU'
+        self.cpu_type = 'TimingSimpleCPU'
+        self.extra_main_args = []
+        self.extra_config_args = []
+        self.variant = 'opt'
+        self.sim_mode = 'se' # or 'fs' for full system mode
+        self.num_cpu = 1 # number of cpus attached to memory
+        self.cmd = 'cpu' # 'mem' for memory intensive workload
+
+        self.gem5_cpu: tp.List[Gem5Core] = []
+
+        # Todo: add gem5 numa mem
+        #self.net_directs: tp.List[NetSim] = []
+
+    def full_name(self):
+        return 'mem.' + self.name
+
+    def add_core(self, core: Gem5Core):
+        core.name = self.name + '.' + core.name
+        self.gem5_core.append(core)
+
+    def wait_terminate(self):
+        return self.wait
+
+    def resreq_cores(self):
+        return 1
+
+    def resreq_mem(self):
+        return 1024
+
+    def prep_cmds(self, env):
+        return [f'mkdir -p {env.gem5_cpdir(self)}']
+    
+    def run_cmd(self, env):
+        cpu_type = self.cpu_type
+
+        if (self.sim_mode == 'se'):
+            gem5_script = f'{env.split_gem5_py_dir}/memside.py'
+        else: #Todo add full system script
+            pass
+
+        cmd = f'{env.split_gem5_path(self.variant)} --outdir={env.gem5_outdir(self)} '
+        cmd += ' '.join(self.extra_main_args)
+        cmd += (
+            f' {gem5_script} '
+            f'--simbricks-shm={env.cpu_shm_path(self)} '
+            f'--simbricks-uxsoc={env.cpu_mem_path(self)} '
+            f'-n {self.num_cpu} '
+        )
+        return cmd
+
+
 class Gem5Host(HostSim):
     """Gem5 host simulator."""
 

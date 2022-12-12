@@ -126,7 +126,8 @@ class ExperimentBaseRunner(ABC):
                 print('preparing config tar:', path)
             host.node_config.make_tar(path)
             copies.append(self.sim_executor(host).send_file(path, self.verbose))
-        await asyncio.wait(copies)
+        if self.exp.hosts:
+            await asyncio.wait(copies)
 
         # prepare all simulators in parallel
         sims = []
@@ -191,7 +192,8 @@ class ExperimentBaseRunner(ABC):
             scs = []
             for _, sc in self.running:
                 scs.append(sc.int_term_kill())
-            await asyncio.wait(scs)
+            if scs:
+                await asyncio.wait(scs)
 
             # wait for all processes to terminate
             for _, sc in self.running:
