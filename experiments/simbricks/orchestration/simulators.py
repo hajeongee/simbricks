@@ -409,8 +409,10 @@ class Gem5Core(Simulator):
         self.cpu_freq = '3GHz'
 
         self.sync_mode = 0
-        self.sync_period = 500
-        self.mem_latency = 500
+        self.sync_period = 30
+        self.mem_latency = 30
+        self.listen = False
+
 
         self.cpu_type_cp = 'X86KvmCPU'
         self.cpu_type = 'TimingSimpleCPU'
@@ -418,7 +420,8 @@ class Gem5Core(Simulator):
         self.extra_config_args = []
         self.variant = 'opt'
         self.sim_mode = 'se' # or 'fs' for full system mode
-        self.idx = 0
+        self.cpu_idx = 0
+        self.numa_idx = 0
         self.cmd = 'cpu' # 'mem' for memory intensive workload
 
         self.gem5_mem: tp.List[Gem5Mem] = []
@@ -461,13 +464,22 @@ class Gem5Core(Simulator):
 
         cmd = f'{env.split_gem5_path(self.variant)} --outdir={env.gem5_outdir(self)} '
         cmd += ' '.join(self.extra_main_args)
+
+        cmd += (f' {gem5_script}' + ' --splitsim=')
+        if (self.listen == True):
+            cmd += f'listen:{env.cpu_mem_path(self)}:{env.cpu_shm_path(self)}'
+        else:
+            cmd += f'connect:{env.cpu_mem_path(self)}'
+
         cmd += (
-            f' {gem5_script} '
-            f'--simbricks-shm={env.cpu_shm_path(self)} '
-            f'--simbricks-uxsoc={env.cpu_mem_path(self)} '
-            f'--simbricks-cpu={self.idx} '
+            ':sync'
+            f':latency={self.mem_latency}ns' 
+            f':sync_interval={self.sync_period}ns '
+            f'--split-cpu={self.cpu_idx} '
+            f'--split-numa={self.numa_idx} '
             f'--cmd={self.cmd} '
         )
+        
         return cmd
 
 
@@ -487,8 +499,9 @@ class Gem5Mem(Simulator):
         self.cpu_freq = '3GHz'
 
         self.sync_mode = 0
-        self.sync_period = 500
-        self.mem_latency = 500
+        self.sync_period = 30
+        self.mem_latency = 30
+        self.listen = True
 
         self.cpu_type_cp = 'X86KvmCPU'
         self.cpu_type = 'TimingSimpleCPU'
@@ -533,12 +546,20 @@ class Gem5Mem(Simulator):
 
         cmd = f'{env.split_gem5_path(self.variant)} --outdir={env.gem5_outdir(self)} '
         cmd += ' '.join(self.extra_main_args)
+
+        cmd += (f' {gem5_script}' + '  --splitsim=')
+        if (self.listen == True):
+            cmd += f'listen:{env.cpu_mem_path(self)}:{env.cpu_shm_path(self)}'
+        else:
+            cmd += f'connect:{env.cpu_mem_path(self)}'
+
         cmd += (
-            f' {gem5_script} '
-            f'--simbricks-shm={env.cpu_shm_path(self)} '
-            f'--simbricks-uxsoc={env.cpu_mem_path(self)} '
+            ':sync'
+            f':latency={self.mem_latency}ns' 
+            f':sync_interval={self.sync_period}ns '
             f'-n {self.num_cpu} '
         )
+
         return cmd
 
 
