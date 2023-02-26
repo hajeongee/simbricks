@@ -35,16 +35,23 @@ for num_cpus in nums_of_cpus:
     )
 
     mem = sim.Gem5Mem(node.NodeConfig)
+    mem.extra_main_args = ['--debug-flags=SplitMEMAdapter,SimBricks']
     mem.num_cpu = num_cpus
     e.add_splitmem(mem)
+    mem.wait = True
 
     cores = []
     for i in range(num_cpus):
         core = sim.Gem5Core(node.NodeConfig)
+        core.extra_main_args = ['--debug-flags=SplitCPUAdapter,SimBricks']
         core.name = f'{i}'
-        core.idx = i
+        core.cpu_idx = i
         core.add_mem(mem)
         e.add_splitcore(core)
         cores.append(core)
 
+    if (num_cpus == 2):
+        cores[1].variant = 'debug'
+        cores[1].debug = True
+        cores[1].wait = True
     experiments.append(e)
