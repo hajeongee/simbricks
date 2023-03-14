@@ -426,17 +426,19 @@ struct SplitGem5C2MSync
 
 struct SplitGem5M2CSync
 {
+  uint8_t pad[48];
   uint64_t timestamp;
+  uint8_t pad_[7];
   uint8_t own_type;
   uint8_t pkt_type;
-  uint8_t pad[48];
-  uint8_t pad_[7];
 } __attribute__((packed));
 //SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(union SimbricksProtoPcieD2H);
 
 struct SplitGem5AddrRange
 {
+  uint8_t pad[48];
   uint64_t timestamp;
+  uint8_t pad_[7];
   uint8_t own_type;
   uint8_t pkt_type;
   uint8_t size;
@@ -446,21 +448,21 @@ struct SplitGem5AddrRange
 
 struct SplitGem5C2Mdummy
 {
+  uint8_t pad[48];
   uint64_t timestamp;
+  uint8_t pad_[7];
   uint8_t own_type;
   uint8_t pkt_type;
-  uint8_t pad[48];
-  uint8_t pad_[7];
 } __attribute__((packed));
 //SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(union SimbricksProtoPcieD2H);
 
 struct SplitGem5M2Cdummy
 {
+  uint8_t pad[48];
   uint64_t timestamp;
+  uint8_t pad_[7];
   uint8_t own_type;
   uint8_t pkt_type;
-  uint8_t pad[48];
-  uint8_t pad_[7];
 } __attribute__((packed));
 //SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(union SimbricksProtoPcieD2H);
 union SplitProtoC2M
