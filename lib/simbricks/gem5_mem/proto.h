@@ -95,7 +95,6 @@ enum Command
   ReadRespWithInvalidate,
   WriteReq,
   WriteResp,
-  WriteCompleteResp,
   WritebackDirty,
   WritebackClean,
   WriteClean,            // writes dirty data below without evicting
@@ -392,7 +391,9 @@ struct SplitGem5Req
 
 struct SplitGem5Packet
 {
+  uint8_t pad[48];
   uint64_t timestamp; //simbricks
+  uint8_t pad_[7];
   uint8_t own_type;
   uint8_t pkt_type;
   enum FlagsType flags;
@@ -416,11 +417,11 @@ struct SplitGem5Packet
 
 struct SplitGem5C2MSync
 {
+  uint8_t pad[48];
   uint64_t timestamp;
+  uint8_t pad_[7];
   uint8_t own_type;
   uint8_t pkt_type;
-  uint8_t pad[48];
-  uint8_t pad_[7];
 } __attribute__((packed));
 //SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(union SimbricksProtoPcieD2H);
 
