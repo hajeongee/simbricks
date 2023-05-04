@@ -26,7 +26,7 @@ QEMU_IMG := $(d)qemu/build/qemu-img
 QEMU := $(d)qemu/build/qemu-system-x86_64
 GEM5_VARIANT ?= fast
 
-external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready
+external: $(d)gem5/ready $(d)gem5_rebase/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready
 .PHONY: external
 
 $(d)gem5:
@@ -39,6 +39,13 @@ $(d)gem5/ready: $(d)gem5
 	    -j`nproc`
 	touch $@
 
+$(d)gem5_rebase/ready: $(d)gem5_rebase
+	+cd $< && \
+	CCFLAGS_EXTRA="-I$(abspath $(lib_dir))" \
+	LIBRARY_PATH="$(abspath $(lib_dir))" \
+	/usr/bin/env python3 /usr/bin/scons build/X86/gem5.$(GEM5_VARIANT) \
+	-j`nproc`
+	touch $@
 
 $(d)qemu:
 	git clone https://github.com/simbricks/qemu.git $@
@@ -78,5 +85,5 @@ $(d)femu/ready: $(d)femu $(lib_nicif)
 	    EXTRA_CPPFLAGS=-I$(abspath $(lib_dir))
 	touch $@
 
-DISTCLEAN := $(base_dir)gem5 $(base_dir)qemu $(base_dir)ns-3 $(base_dir)femu
+DISTCLEAN := $(base_dir)gem5 $(d)gem5_rebase $(base_dir)qemu $(base_dir)ns-3 $(base_dir)femu
 include mk/subdir_post.mk
