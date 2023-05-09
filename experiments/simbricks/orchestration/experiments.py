@@ -126,7 +126,8 @@ class Experiment(object):
     def all_simulators(self):
         """Returns all simulators defined to run in this experiment."""
         return itertools.chain(
-            self.hosts, self.pcidevs, self.memdevs, self.netmems, self.networks
+            self.hosts, self.pcidevs, self.memdevs, self.netmems, self.networks, 
+            self.splitcores, self.splitmems
         )
 
     def resreq_mem(self):
