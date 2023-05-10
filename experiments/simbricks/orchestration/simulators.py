@@ -433,7 +433,6 @@ class Gem5Core(Simulator):
         return 'core.' + self.name
 
     def add_mem(self, mem: Gem5Mem):
-        mem.name = self.name + '.' + mem.name
         self.gem5_mem.append(mem)
 
     def dependencies(self):
@@ -521,7 +520,6 @@ class Gem5Mem(Simulator):
         return 'mem.' + self.name
 
     def add_core(self, core: Gem5Core):
-        core.name = self.name + '.' + core.name
         self.gem5_core.append(core)
 
     def wait_terminate(self):
