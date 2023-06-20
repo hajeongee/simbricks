@@ -94,6 +94,10 @@ class ExpEnv(object):
         return f'{self.workdir}/core.shm'
     def cpu_mem_path(self, sim):
         return f'{self.workdir}/core.mem'
+    def numa_mem_path(self, sim):
+        return f'{self.workdir}/numa.mem'
+    def numa_shm_path(self, sim):
+        return f'{self.workdir}/numa.shm'
 
     def gem5_outdir(self, sim):
         return f'{self.workdir}/gem5-out.{sim.name}'
