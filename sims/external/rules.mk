@@ -43,6 +43,7 @@ $(d)gem5_rebase/ready: $(d)gem5_rebase
 	+cd $< && \
 	CCFLAGS_EXTRA="-I$(abspath $(lib_dir))" \
 	LIBRARY_PATH="$(abspath $(lib_dir))" \
+	PYTHON_CONFIG=/usr/bin/python3.9-config \
 	scons build/X86/gem5.$(GEM5_VARIANT) \
 	-j`nproc`
 	touch $@
