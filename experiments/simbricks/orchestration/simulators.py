@@ -475,7 +475,7 @@ class Gem5Core(Simulator):
             f':latency={self.mem_latency}ns' 
             f':sync_interval={self.sync_period}ns '
             f'--split-cpu={self.cpu_idx} '
-            f'--split-numa={self.numa_idx} '
+            f'--split-numa-idx={self.numa_idx} '
             f'--cmd={self.cmd} '
         )
         
@@ -488,7 +488,7 @@ class Gem5Mem(Simulator):
         super().__init__()
         self.node_config = node_config
         """Config for the simulated host. """
-        self.name = ''
+        self.name = 'mem.'
         self.wait = False
         """
         `True` - Wait for process of simulator to exit.
@@ -510,14 +510,17 @@ class Gem5Mem(Simulator):
         self.sim_mode = 'se' # or 'fs' for full system mode
         self.num_cpu = 1 # number of cpus attached to memory
         self.cmd = 'cpu' # 'mem' for memory intensive workload
+        self.is_one_numa = True # For multi-numa configuration, run corresponding script
+        self.numa_idx = 1
+        self.numa_num = 1
 
-        self.gem5_cpu: tp.List[Gem5Core] = []
+        self.gem5_core: tp.List[Gem5Core] = []
 
         # Todo: add gem5 numa mem
         #self.net_directs: tp.List[NetSim] = []
 
     def full_name(self):
-        return 'mem.' + self.name
+        return self.name
 
     def add_core(self, core: Gem5Core):
         self.gem5_core.append(core)
@@ -538,7 +541,12 @@ class Gem5Mem(Simulator):
         cpu_type = self.cpu_type
 
         if (self.sim_mode == 'se'):
-            gem5_script = f'{env.split_gem5_py_dir}/memside.py'
+            if (self.is_one_numa):
+                gem5_script = f'{env.split_gem5_py_dir}/memside.py'
+            else:
+                # run numa Memory script
+                gem5_script = f'{env.split_gem5_py_dir}/numa_mem.py'
+                
         else: #Todo add full system script
             pass
 
@@ -555,11 +563,125 @@ class Gem5Mem(Simulator):
             ':sync'
             f':latency={self.mem_latency}ns' 
             f':sync_interval={self.sync_period}ns '
-            f'-n {self.num_cpu} '
         )
+        
+        # if it's a multi-NUMA configuration,
+        # add one more URLs. one bridge UP bridge DOWN
+        if (not self.is_one_numa): 
+            cmd += ('  --splitsim='
+                    f'listen:{env.numa_mem_path(self)}:{env.numa_shm_path(self)}'
+                    ':sync'
+                    f':latency={self.mem_latency}ns'
+                    f':sync_interval={self.sync_period}ns '
+                    f'--split-numa-idx={self.numa_idx} '
+                    f'--split-numa-num={self.numa_num} '
+            )
+
+        cmd += f'-n {self.num_cpu} '
 
         return cmd
 
+class Gem5Sysbus(Simulator):
+        
+    def __init__(self, node_config: NodeConfig):
+        super().__init__()
+        self.node_config = node_config
+        """Config for the simulated host. """
+        self.name = 'sysbus.'
+        self.wait = False
+        """
+        `True` - Wait for process of simulator to exit.
+        `False` - Don't wait and instead stop the process.
+        """
+        self.sleep = 0
+        self.cpu_freq = '3GHz'
+
+        self.sync_mode = 0
+        self.sync_period = 30
+        self.mem_latency = 30
+        self.listen = False
+
+        self.cpu_type_cp = 'X86KvmCPU'
+        self.cpu_type = 'TimingSimpleCPU'
+        self.extra_main_args = []
+        self.extra_config_args = []
+        self.variant = 'opt'
+        self.sim_mode = 'se' # or 'fs' for full system mode
+        self.num_core = 1 # number of cpus attached to memory
+        self.cmd = 'cpu' # 'mem' for memory intensive workload
+        self.num_numa = 2 # For multi-numa configuration, run corresponding script
+
+        self.gem5_mem: tp.List[Gem5Mem] = []
+
+        # Todo: add gem5 numa mem
+        #self.net_directs: tp.List[NetSim] = []
+
+    def full_name(self):
+        return self.name
+
+    def add_mem(self, mem: Gem5Mem):
+        self.gem5_mem.append(mem)
+
+    def wait_terminate(self):
+        return self.wait
+    
+    def dependencies(self):
+        deps = []
+        for mem in self.gem5_mem:
+            deps.append(mem)
+        return deps
+    
+    def resreq_cores(self):
+        return 1
+
+    def resreq_mem(self):
+        return 1024
+
+    def prep_cmds(self, env):
+        return [f'mkdir -p {env.gem5_cpdir(self)}']
+    
+    def listen_sockets(self, env: ExpEnv):
+        listens = []
+        i = 0
+        for mem in self.gem5_mem:
+            path = env.numa_mem_path(mem)
+            d_path = str(path) + f'.down.{i}'
+            u_path = str(path) + f'.up.{i}'
+            listens.append((mem, d_path))
+            listens.append((mem, u_path))
+            i += 1
+        return listens   
+    
+    def sockets_wait(self, env: ExpEnv):
+        return [s for (_, s) in self.listen_sockets(env)]
+    
+    def run_cmd(self, env):
+        cpu_type = self.cpu_type
+
+        if (self.sim_mode == 'se'):
+            gem5_script = f'{env.split_gem5_py_dir}/numa_sysbus.py'
+
+        else: #Todo add full system script
+            pass
+
+        cmd = f'{env.split_gem5_path(self.variant)} --outdir={env.gem5_outdir(self)} '
+        cmd += ' '.join(self.extra_main_args)
+
+        cmd += (f' {gem5_script}' + '  --splitsim=')
+        if (self.listen == True):
+            cmd += f'listen:{env.numa_mem_path(self)}:{env.numa_shm_path(self)}'
+        else:
+            cmd += f'connect:{env.numa_mem_path(self)}'
+
+        cmd += (
+            ':sync'
+            f':latency={self.mem_latency}ns' 
+            f':sync_interval={self.sync_period}ns '
+            f'--split-numa-num={self.num_numa} '
+            f'-n {self.num_core}'
+        )
+
+        return cmd
 
 class Gem5Host(HostSim):
     """Gem5 host simulator."""
