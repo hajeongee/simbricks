@@ -26,7 +26,7 @@ import typing as tp
 from simbricks.orchestration import simulators
 from simbricks.orchestration.proxy import NetProxyConnecter, NetProxyListener
 from simbricks.orchestration.simulators import (
-    Gem5Core, Gem5Mem, HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
+    Gem5Core, Gem5Mem, Gem5Sysbus, HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
 )
 
 
@@ -67,6 +67,8 @@ class Experiment(object):
         self.splitcores: tp.List[Gem5Core] = []
         """The Split Gem5 cores to run."""
         self.splitmems: tp.List[Gem5Mem] = []
+        """The Split Gem5 Mems to run."""
+        self.splitsysbus: tp.List[Gem5Sysbus] = []
         """The Split Gem5 Mems to run."""
         self.metadata = {}
 
@@ -122,12 +124,18 @@ class Experiment(object):
             if h.name == sim.name:
                 raise Exception('Duplicate host name')
         self.splitmems.append(sim)
+    
+    def add_splitsysbus(self, sim: Gem5Sysbus):
+        for h in self.splitsysbus:
+            if h.name == sim.name:
+                raise Exception('Duplicate sysbus name')
+        self.splitsysbus.append(sim)
 
     def all_simulators(self):
         """Returns all simulators defined to run in this experiment."""
         return itertools.chain(
             self.hosts, self.pcidevs, self.memdevs, self.netmems, self.networks, 
-            self.splitcores, self.splitmems
+            self.splitcores, self.splitmems, self.splitsysbus
         )
 
     def resreq_mem(self):
