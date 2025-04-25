@@ -25,7 +25,7 @@ import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
 
-host_pairs = [15]
+host_pairs = [2]
 
 experiments = []
 
@@ -49,10 +49,12 @@ for host_p in host_pairs:
         ip = 1 + i
         node_config.ip = f'10.0.{int(ip / 256)}.{ip % 256}'
         node_config.app = node.IperfTCPServer()
+        node_config.force_mac_addr = f'00:90:00:00:00:{ip}'
 
         host = sim.Gem5Host(node_config)
         host.cpu_freq = "2GHz"
         host.name = f'server.{i}'
+        host.variant = 'opt'
         host.add_netdirect(net)
 
         e.add_host(host)
@@ -68,6 +70,7 @@ for host_p in host_pairs:
         ip = 1 + host_p + i
         node_config.ip = f'10.0.{int(ip / 256)}.{ip % 256}'
         node_config.app = node.IperfTCPClient()
+        node_config.force_mac_addr = f'00:90:00:00:00:{ip}'
 
         server_ip = 1 + i
         node_config.app.server_ip = f'10.0.{int(server_ip / 256)}.{server_ip % 256}'
@@ -75,6 +78,7 @@ for host_p in host_pairs:
         host = sim.Gem5Host(node_config)
         host.cpu_freq = "2GHz"
         host.name = f'client.{i}'
+        host.variant = 'opt'
         host.add_netdirect(net)
 
         e.add_host(host)
