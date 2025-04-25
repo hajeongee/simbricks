@@ -535,7 +535,7 @@ class PingClient(AppConfig):
 class IperfTCPServer(AppConfig):
 
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:
-        return ['iperf -s -l 32M -w 32M']
+        return ['iperf -s -P 1']
 
 
 class IperfUDPServer(AppConfig):
@@ -555,9 +555,9 @@ class IperfTCPClient(AppConfig):
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:
 
         cmds = [
-            'sleep 1',
-            'iperf -l 32M -w 32M  -c ' + self.server_ip + ' -i 1 -P ' +
-            str(self.procs)
+            'sleep 0.5',
+            'iperf -c ' + self.server_ip + ' -i 1 -b 250m'
+
         ]
         if self.is_last:
             cmds.append('sleep 0.5')
