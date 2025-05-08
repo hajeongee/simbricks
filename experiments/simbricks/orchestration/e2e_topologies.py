@@ -24,6 +24,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import ipaddress
+import random
 
 import simbricks.orchestration.e2e_components as e2e
 
@@ -34,13 +36,21 @@ class E2ETopology(ABC):
     def add_to_network(self, net):
         pass
 
+    @abstractmethod
+    def get_switches(self):
+        pass
+
+    @abstractmethod
+    def get_links(self):
+        pass
+
 
 class E2EDumbbellTopology(E2ETopology):
 
     def __init__(self):
-        self.left_switch = e2e.E2ESwitchNode('_leftSwitch')
-        self.right_switch = e2e.E2ESwitchNode('_rightSwitch')
-        self.link = e2e.E2ESimpleChannel('_link')
+        self.left_switch = e2e.E2ESwitchNode("_leftSwitch")
+        self.right_switch = e2e.E2ESwitchNode("_rightSwitch")
+        self.link = e2e.E2ESimpleChannel("_link")
         self.link.left_node = self.left_switch
         self.link.right_node = self.right_switch
 
@@ -87,3 +97,269 @@ class E2EDumbbellTopology(E2ETopology):
     @delay.setter
     def delay(self, delay: str):
         self.link.delay = delay
+
+    def get_switches(self):
+        return [self.left_switch, self.right_switch]
+
+    def get_links(self):
+        return [self.link]
+
+
+class DCFatTree(E2ETopology):
+
+    def __init__(self, basename='', **kwargs):
+        self.params = {
+            'n_spine_sw': 1,
+            'n_agg_bl': 5,
+            'n_agg_sw': 1,
+            'n_agg_racks': 6,
+            'h_per_rack': 40,
+            'mtu': '1448',
+            'queue_type': 'ns3::PTPQueue',
+            'spine_link_delay': '1us',
+            'spine_link_rate': '100Gbps',
+            'spine_link_queue': '512KB',
+            'agg_link_delay': '1us',
+            'agg_link_rate': '100Gbps',
+            'agg_link_queue': '512KB',
+            'sbhost_eth_latency': '500ns',
+            'sbhost_sync_delay': '100ns',
+        }
+        for (n,v) in kwargs.items():
+            self.params[n] = v
+
+        self.basename = basename
+
+        self.switches = []
+        self.spine_switches = []
+        self.agg_blocks = []
+
+        self.links = []
+        self.spine_agg_links = []
+        self.agg_tor_links = []
+
+        self.hosts = []
+
+        self.n_simbricks_host = 0
+
+        bn = basename
+
+        # Create spine switches
+        for i in range(0, self.params['n_spine_sw']):
+            sw = e2e.E2ESwitchNode(f"_{bn}spine{i}")
+            sw.weight = (self.params['n_agg_bl'] * self.params['n_agg_sw'] *
+                self.params['n_agg_racks'] * self.params['h_per_rack'])
+            sw.mtu = self.params['mtu']
+            self.spine_switches.append(sw)
+            self.switches.append(sw)
+
+        # Create aggregation blocks
+        for i in range(0, self.params['n_agg_bl']):
+            ab = {
+                'id': f'agg{i}',
+                'switches': [],
+                'racks': []
+            }
+
+            # Create switches in aggregation blocks
+            for j in range(0, self.params['n_agg_sw']):
+                sw = e2e.E2ESwitchNode(f"_{bn}agg{i}_{j}")
+                sw.weight = (self.params['n_agg_racks'] *
+                    self.params['h_per_rack'])
+                sw.mtu = self.params['mtu']
+                ab['switches'].append(sw)
+                self.switches.append(sw)
+
+            # Create racks (including ToRs)
+            for j in range(0, self.params['n_agg_racks']):
+                tor = e2e.E2ESwitchNode(f"_{bn}tor{i}_{j}")
+                tor.weight = self.params['h_per_rack']
+                sw.mtu = self.params['mtu']
+                r = {
+                    'id': f'rack{i}_{j}',
+                    'tor': tor,
+                    'hosts': []
+                }
+                ab['racks'].append(r)
+                self.switches.append(tor)
+            self.agg_blocks.append(ab)
+
+        # wire up switches
+        for (i,ab) in enumerate(self.agg_blocks):
+            for (j,agg_sw) in enumerate(ab['switches']):
+                agg_sw = ab['switches'][j]
+                # Wire up aggregation switch to spine switches
+                for (si,spine_sw) in enumerate(self.spine_switches):
+                    l = e2e.E2ESimpleChannel(f"_{bn}link_sp_ab{i}_as{j}_s{si}")
+                    l.left_node = agg_sw
+                    l.right_node = spine_sw
+                    l.delay = self.params['spine_link_delay']
+                    l.data_rate = self.params['spine_link_rate']
+                    l.queue_type = self.params['queue_type']
+                    l.queue_size = self.params['spine_link_queue']
+                    self.links.append(l)
+                    self.spine_agg_links.append(l)
+
+                # Wire up ToRs to aggregation switches
+                for (ti,r) in enumerate(ab['racks']):
+                    l = e2e.E2ESimpleChannel(
+                            f"_{bn}link_ab{i}_as{j}_tor{ti}")
+                    l.left_node = r['tor']
+                    l.right_node = agg_sw
+                    l.delay = self.params['agg_link_delay']
+                    l.data_rate = self.params['agg_link_rate']
+                    l.queue_type = self.params['queue_type']
+                    l.queue_size = self.params['agg_link_queue']
+                    self.links.append(l)
+                    self.agg_tor_links.append(l)
+
+    def add_to_network(self, net):
+        for sw in self.switches:
+            net.add_component(sw)
+        for l in self.links:
+            net.add_component(l)
+        #for h in self.hosts:
+        #    net.add_component(h)
+
+    def capacity(self):
+        max_hs = (self.params['n_agg_bl'] * self.params['n_agg_racks'] *
+            self.params['h_per_rack'])
+        return max_hs - len(self.hosts)
+
+    def racks_with_capacity(self):
+        racks = []
+        for (i,ab) in enumerate(self.agg_blocks):
+            for (j,r) in enumerate(ab['racks']):
+                cap = self.params['h_per_rack'] - len(r['hosts'])
+                if cap <= 0:
+                    continue
+                racks.append((i, j, cap))
+        return racks
+
+    def add_host(self, agg, rack, h):
+        r = self.agg_blocks[agg]['racks'][rack]
+        if len(r['hosts']) >= self.params['h_per_rack']:
+            raise BufferError('Requested rack is full')
+        r['hosts'].append(h)
+        self.hosts.append(h)
+        r['tor'].add_component(h)
+
+    def add_host_r(self, h):
+        rs = self.racks_with_capacity()
+        if not rs:
+            raise BufferError('Network is full')
+        (agg, rack, _) = random.choice(rs)
+        self.add_host(agg, rack, h)
+        return (agg, rack)
+
+    def wrap_simbricks_host(self, nic):
+        i = self.n_simbricks_host
+        self.n_simbricks_host += 1
+
+        host = e2e.E2ESimbricksHost(f'_sbh-{i}-{nic.name}')
+        host.eth_latency = self.params['sbhost_eth_latency']
+        host.sync_delay = self.params['sbhost_sync_delay']
+        host.simbricks_component = nic
+        return host
+
+    def add_simbricks_host(self, agg, rack, nic):
+        self.add_host(agg, rack, self.wrap_simbricks_host(nic))
+
+    def add_simbricks_host_r(self, nic):
+        return self.add_host_r(self.wrap_simbricks_host(nic))
+
+    def get_switches(self):
+        return self.switches
+
+    def get_links(self):
+        return self.links
+
+
+def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
+    params = {
+        'link_rate': '5Gbps',
+        'link_delay': '1us',
+        'link_queue_size': '512KB',
+        'link_queue_type': 'ns3::PTPQueue',
+        'congestion_control': e2e.CongestionControl.CUBIC,
+        'app_stop_time': '60s',
+    }
+    for (k,v) in kwargs.items():
+        params[k] = v
+
+    pairs = int(topo.capacity() / 2)
+    ipn = ipaddress.ip_network(subnet)
+    prefix = f'/{ipn.prefixlen}'
+    ips = ipn.hosts()
+    for i in range(0, pairs):
+        s_ip = str(next(ips))
+        c_ip = str(next(ips))
+
+        s_host = e2e.E2ESimpleNs3Host(f'bg_s-{i}')
+        s_host.delay = params['link_delay']
+        s_host.data_rate = params['link_rate']
+        s_host.ip = s_ip + prefix
+        s_host.queue_size = params['link_queue_size']
+        s_host.queue_type = params['link_queue_type']
+        s_host.congestion_control = params['congestion_control']
+        s_app = e2e.E2EPacketSinkApplication('sink')
+        s_app.local_ip = '0.0.0.0:5000'
+        s_app.stop_time = params['app_stop_time']
+        s_host.add_component(s_app)
+        s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
+        s_probe.interval = '100ms'
+        s_probe.file = f'sink-rx-{i}'
+        s_app.add_component(s_probe)
+        topo.add_host_r(s_host)
+
+        c_host = e2e.E2ESimpleNs3Host(f'bg_c-{i}')
+        c_host.delay = params['link_delay']
+        c_host.data_rate = params['link_rate']
+        c_host.ip = c_ip + prefix
+        c_host.queue_size = params['link_queue_size']
+        c_host.queue_type = params['link_queue_type']
+        c_host.congestion_control = params['congestion_control']
+        c_app = e2e.E2EBulkSendApplication('sender')
+        c_app.remote_ip = s_ip + ':5000'
+        c_app.stop_time = params['app_stop_time']
+        c_host.add_component(c_app)
+        topo.add_host_r(c_host)
+
+
+def add_homa_bg(topo, subnet='10.42.0.0/16', **kwargs):
+    params = {
+        'link_rate': '5Gbps',
+        'link_delay': '1us',
+        'link_queue_size': '512KB',
+        'link_queue_type': 'ns3::HomaPFifoQueue',
+        'app_stop_time': '60s',
+    }
+    for (k,v) in kwargs.items():
+        params[k] = v
+
+
+    n = topo.capacity()
+    ipn = ipaddress.ip_network(subnet)
+    prefix = f'/{ipn.prefixlen}'
+    ip_pool = ipn.hosts()
+    ips = [str(next(ip_pool)) for i in range(0,n)]
+    remotes = [f'{ip}:3000' for ip in ips]
+
+    for i in range(0, n):
+        ip = ips[i]
+
+        s_host = e2e.E2ESimpleNs3Host(f'bg_h-{i}')
+        s_host.delay = params['link_delay']
+        s_host.data_rate = params['link_rate']
+        s_host.ip = ip + prefix
+        s_host.queue_size = params['link_queue_size']
+        s_host.queue_type = params['link_queue_type']
+        s_app = e2e.E2EMsgGenApplication('msggen')
+        s_app.stop_time = params['app_stop_time']
+        s_app.remotes = remotes
+        s_host.add_component(s_app)
+        #s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
+        #s_probe.interval = '100ms'
+        #s_probe.file = f'sink-rx-{i}'
+        #s_app.add_component(s_probe)
+        topo.add_host_r(s_host)
