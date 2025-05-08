@@ -115,7 +115,7 @@ class DCFatTree(E2ETopology):
             'n_agg_racks': 6,
             'h_per_rack': 40,
             'mtu': '1448',
-            'queue_type': 'ns3::PTPQueue',
+            'queue_type': 'ns3::DropTailQueue',
             'spine_link_delay': '1us',
             'spine_link_rate': '100Gbps',
             'spine_link_queue': '512KB',
@@ -280,7 +280,7 @@ def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
         'link_rate': '5Gbps',
         'link_delay': '1us',
         'link_queue_size': '512KB',
-        'link_queue_type': 'ns3::PTPQueue',
+        'link_queue_type': 'ns3::DropTailQueue',
         'congestion_control': e2e.CongestionControl.CUBIC,
         'app_stop_time': '60s',
     }
