@@ -349,6 +349,7 @@ class TASNode(NodeConfig):
         return cmds
 
 
+
 class I40eDCTCPNode(NodeConfig):
 
     def prepare_pre_cp(self) -> tp.List[str]:
@@ -447,6 +448,44 @@ class LinuxFEMUNode(NodeConfig):
             else:
                 l.append('modprobe ' + d)
         return super().prepare_post_cp() + l
+
+class FCTClient(AppConfig):
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '192.168.64.1'
+        self.flow_size = 2 # in MB
+        self.is_last = False
+
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
+        cmd = ['sleep 0.5',
+            f'./client {self.server_ip} {self.flow_size}']
+        
+        if self.is_last:
+            cmd.append('sleep 1')
+
+        return cmd
+    
+    def config_files(self, environment: env.ExpEnv) -> tp.Dict[str, tp.IO]:
+        path = f'{environment.repodir}/experiments/fct/client'
+        m = {'client': open(path, 'rb')}
+
+        return {**m, **super().config_files(environment)}
+
+class FCTServer(AppConfig):
+    def __init__(self):
+        super().__init__()
+
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
+        return [
+            './server',
+            'sleep infinity'
+        ]   
+
+    def config_files(self, environment: env.ExpEnv) -> tp.Dict[str, tp.IO]:
+        path = f'{environment.repodir}/experiments/fct/server'
+        m = {'server': open(path, 'rb')}
+
+        return {**m, **super().config_files(environment)}
 
 
 class IdleHost(AppConfig):
