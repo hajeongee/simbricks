@@ -52,7 +52,7 @@ for host_p in host_pairs:
         node_config.force_mac_addr = f'00:90:00:00:00:{ip}'
 
         host = sim.Gem5Host(node_config)
-        host.cpu_freq = "2GHz"
+        host.cpu_freq = "4GHz"
         host.name = f'server.{i}'
         host.variant = 'opt'
 
@@ -80,7 +80,7 @@ for host_p in host_pairs:
         node_config.app.server_ip = f'10.0.{int(server_ip / 256)}.{server_ip % 256}'
 
         host = sim.Gem5Host(node_config)
-        host.cpu_freq = "2GHz"
+        host.cpu_freq = "4GHz"
         host.name = f'client.{i}'
         host.variant = 'opt'
 
