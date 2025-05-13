@@ -62,7 +62,7 @@ for host_p in host_percentage:
     e.checkpoint = True
 
     net = sim.NS3FCTNet()
-    net.opt = f'--k_value={k_value} --flow_size={flow_size} --detail_host_percent{host_p/100.0}'
+    net.opt = f'--k_value={k_value} --flow_size={flow_size} --detail_host_percent={host_p/100.0}'
     e.add_network(net)
 
     # Number of detailed hosts, round up to the nearest even number
@@ -87,7 +87,7 @@ for host_p in host_percentage:
     server_hosts: tp.List[sim.Gem5Host] = []
     client_hosts: tp.List[sim.Gem5Host] = []
 
-    num_pair = num_detail_hosts / 2
+    num_pair = num_detail_hosts // 2
     
     for i in range(0, num_pair):
         
