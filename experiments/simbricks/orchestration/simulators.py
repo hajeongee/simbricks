@@ -1112,6 +1112,23 @@ class NS3BridgeNet(NetSim):
         return cmd
 
 
+class NS3FCTNet(NetSim):
+
+    def run_cmd(self, env: ExpEnv) -> str:
+        ports = ''
+        for (_, n) in self.connect_sockets(env):
+            ports += '--SimbricksPort=' + n + ' '
+
+        cmd = (
+            f'{env.repodir}/sims/external/ns-3'
+            f'/simbricks-run.sh fct_fat {ports} {self.opt}'
+        )
+        print(cmd)
+
+        return cmd
+
+
+
 class NS3SequencerNet(NetSim):
 
     def run_cmd(self, env: ExpEnv) -> str:

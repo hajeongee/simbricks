@@ -40,7 +40,7 @@ num_hosts_per_rack = k_value / 2
 
 experiments = []
 
-def hostID_to_IP(host_id: int) -> str:
+def hostID_to_IP(host_id: int, gate: bool = False) -> str:
     """
     Convert host ID to IP address.
     Hosts are numbered in a row-major order.
@@ -54,12 +54,15 @@ def hostID_to_IP(host_id: int) -> str:
     ip3 = sub_net_num % 256
     ip4 = int(1 + num_agg_sw + (host_id // total_num_tor)) 
 
-    return f'{ip1}.{ip2}.{ip3}.{ip4}'
+    if gate:
+        return f'{ip1}.{ip2}.{ip3}.1'
+    else:
+        return f'{ip1}.{ip2}.{ip3}.{ip4}'
 
 
 for host_p in host_percentage:
     e = exp.Experiment(f'FCT_FatTree-{k_value}_{host_p}')
-    e.checkpoint = True
+    e.checkpoint = False
 
     net = sim.NS3FCTNet()
     net.opt = f'--k_value={k_value} --flow_size={flow_size} --detail_host_percent={host_p/100.0}'
@@ -69,7 +72,7 @@ for host_p in host_percentage:
     # For having a pair of server and client
     num_detail_hosts = round(total_hosts * host_p / 100.0)
     if num_detail_hosts == 0:
-        num_detail_hosts = 2
+        num_detail_hosts = 0
     else:
         if num_detail_hosts % 2 != 0:
             num_detail_hosts += 1
@@ -98,9 +101,11 @@ for host_p in host_percentage:
         # server IP starts from 1
         server_node_id = int(starting_host_idx + i)
         server_ip = hostID_to_IP(server_node_id)
+        gate_way_ip = hostID_to_IP(server_node_id, gate=True)
         node_config.ip = server_ip
         node_config.app = node.FCTServer()
-        node_config.force_mac_addr = f'00:90:00:00:00:{server_node_id}'
+        node_config.app.gate_way_ip = gate_way_ip
+        node_config.force_mac_addr = f'00:90:00:00:00:{server_node_id:02x}'
 
         host = sim.Gem5Host(node_config)
         host.cpu_freq = "4GHz"
@@ -116,18 +121,25 @@ for host_p in host_percentage:
 
         server_hosts.append(host) 
 
+    for i in range(0, num_pair):
 
         # Create client hosts
         node_config = node.I40eLinuxNode()
         node_config.prefix = 24
         # node_config.nockp = True
         # client IP starts from 16
-        client_node_id = int(last_host_idx - i)
+        client_node_id = int(starting_host_idx + num_pair + i)
         client_ip = hostID_to_IP(client_node_id)
+        gate_way_ip = hostID_to_IP(client_node_id, gate=True)
         node_config.ip = client_ip
         node_config.app = node.FCTClient()
-        node_config.force_mac_addr = f'00:90:00:00:00:{client_node_id}'
+        node_config.app.gate_way_ip = gate_way_ip
+        node_config.force_mac_addr = f'00:90:00:00:00:{client_node_id:02x}'
+        print('mac addr:', node_config.force_mac_addr)
 
+        # last client match to the first server
+        server_ip = hostID_to_IP(int(last_host_idx - num_pair - i)) 
+        print(f'host {client_node_id} client send to {last_host_idx - num_pair - i} server')
         node_config.app.server_ip = server_ip
 
         host = sim.Gem5Host(node_config)

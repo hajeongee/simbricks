@@ -455,13 +455,21 @@ class FCTClient(AppConfig):
         self.server_ip = '192.168.64.1'
         self.flow_size = 2 # in MB
         self.is_last = False
+        self.gate_way_ip = '10.0.0.1'
 
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:
-        cmd = ['sleep 0.5',
+        cmd = [
+            'mount -t proc proc /proc',
+            'mount -t sysfs sysfs /sys',
+            'sysctl -w net.ipv6.conf.all.disable_ipv6=1',
+            'sysctl -w net.ipv6.conf.default.disable_ipv6=1',
+            f'ip route add default via {self.gate_way_ip} dev eth0',
+               'ip route show',
+            'sleep 0.5',
             f'./client {self.server_ip} {self.flow_size}']
         
         if self.is_last:
-            cmd.append('sleep 1')
+            cmd.append('sleep 2')
 
         return cmd
     
@@ -474,9 +482,16 @@ class FCTClient(AppConfig):
 class FCTServer(AppConfig):
     def __init__(self):
         super().__init__()
+        self.gate_way_ip = '10.0.0.1'
 
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [
+            'mount -t proc proc /proc',
+            'mount -t sysfs sysfs /sys',
+            'sysctl -w net.ipv6.conf.all.disable_ipv6=1',
+            'sysctl -w net.ipv6.conf.default.disable_ipv6=1',
+            f'ip route add default via {self.gate_way_ip} dev eth0',
+            'ip route show',
             './server',
             'sleep infinity'
         ]   
