@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import math
+import random
 import typing as tp
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
@@ -131,6 +132,7 @@ for host_p in host_percentage:
         gate_way_ip = hostID_to_IP(client_node_id, gate=True)
         node_config.ip = client_ip
         node_config.app = node.FCTClient()
+        node_config.app.rand_start = random.uniform(0, 2)
         node_config.app.gate_way_ip = gate_way_ip
         node_config.force_mac_addr = f'00:90:00:00:00:{client_node_id:02x}'
         print('mac addr:', node_config.force_mac_addr)

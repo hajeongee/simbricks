@@ -456,6 +456,7 @@ class FCTClient(AppConfig):
         self.flow_size = 2 # in MB
         self.is_last = False
         self.gate_way_ip = '10.0.0.1'
+        self.rand_start = 0
 
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         cmd = [
@@ -465,11 +466,14 @@ class FCTClient(AppConfig):
             'sysctl -w net.ipv6.conf.default.disable_ipv6=1',
             f'ip route add default via {self.gate_way_ip} dev eth0',
                'ip route show',
+            f'sleep {self.rand_start}',
             'sleep 0.5',
             f'./client {self.server_ip} {self.flow_size}']
         
         if self.is_last:
             cmd.append('sleep 2')
+        else:
+            cmd.append('sleep infinity')
 
         return cmd
     
