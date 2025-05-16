@@ -27,7 +27,7 @@ import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
 
-host_percentage = [10, 20, 50, 100]
+host_percentage = [10, 20, 50, 90, 100]
 k_value = 8
 flow_size = 2
 
