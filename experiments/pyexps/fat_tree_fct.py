@@ -77,7 +77,7 @@ for host_p in host_percentage:
         if num_detail_hosts % 2 != 0:
             num_detail_hosts += 1
     
-    starting_host_idx = total_hosts - num_detail_hosts
+    starting_host_idx = 0
     last_host_idx = total_hosts - 1
 
     print(f"detailed_percentage: {host_p}; num_detail_hosts: {num_detail_hosts} from idx {starting_host_idx} - {last_host_idx}")
@@ -121,14 +121,12 @@ for host_p in host_percentage:
 
         server_hosts.append(host) 
 
-    for i in range(0, num_pair):
-
         # Create client hosts
         node_config = node.I40eLinuxNode()
         node_config.prefix = 24
         # node_config.nockp = True
         # client IP starts from 16
-        client_node_id = int(starting_host_idx + num_pair + i)
+        client_node_id = int(total_hosts - server_node_id - 1)
         client_ip = hostID_to_IP(client_node_id)
         gate_way_ip = hostID_to_IP(client_node_id, gate=True)
         node_config.ip = client_ip
@@ -138,8 +136,7 @@ for host_p in host_percentage:
         print('mac addr:', node_config.force_mac_addr)
 
         # last client match to the first server
-        server_ip = hostID_to_IP(int(last_host_idx - num_pair - i)) 
-        print(f'host {client_node_id} client send to {last_host_idx - num_pair - i} server')
+        print(f'host {client_node_id} client send to {server_node_id} server')
         node_config.app.server_ip = server_ip
 
         host = sim.Gem5Host(node_config)
