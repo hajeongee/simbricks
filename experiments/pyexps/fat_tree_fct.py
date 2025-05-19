@@ -27,8 +27,8 @@ import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
 
-host_percentage = [10, 20, 50, 90, 100]
-k_value = 8
+host_percentage = [30]
+k_value = 4
 flow_size = 2
 
 # Fat Tree parameters derived from k_value. Not variables
@@ -81,12 +81,7 @@ for host_p in host_percentage:
     starting_host_idx = 0
     last_host_idx = total_hosts - 1
 
-    print(f"detailed_percentage: {host_p}; num_detail_hosts: {num_detail_hosts} from idx {starting_host_idx} - {last_host_idx}")
-
-    for i in range(0, num_detail_hosts):
-        host_id = int(starting_host_idx + i)
-        host_ip = hostID_to_IP(host_id)
-        print(f"host {host_id} ip: {host_ip}")
+    print(f"detailed_percentage: {host_p}; num_detail_hosts: {num_detail_hosts}")
 
     server_hosts: tp.List[sim.Gem5Host] = []
     client_hosts: tp.List[sim.Gem5Host] = []
@@ -122,11 +117,17 @@ for host_p in host_percentage:
 
         server_hosts.append(host) 
 
+        print(f'server ID: {server_node_id} IP: {server_ip} MAC: {node_config.force_mac_addr}')
+
+    for i in range(0, num_pair):
+
         # Create client hosts
         node_config = node.I40eLinuxNode()
         node_config.prefix = 24
         # node_config.nockp = True
         # client IP starts from 16
+        server_node_id = int(starting_host_idx + i)
+        server_ip = hostID_to_IP(server_node_id)
         client_node_id = int(total_hosts - server_node_id - 1)
         client_ip = hostID_to_IP(client_node_id)
         gate_way_ip = hostID_to_IP(client_node_id, gate=True)
@@ -135,7 +136,6 @@ for host_p in host_percentage:
         node_config.app.rand_start = random.uniform(0, 2)
         node_config.app.gate_way_ip = gate_way_ip
         node_config.force_mac_addr = f'00:90:00:00:00:{client_node_id:02x}'
-        print('mac addr:', node_config.force_mac_addr)
 
         # last client match to the first server
         print(f'host {client_node_id} client send to {server_node_id} server')
@@ -156,6 +156,9 @@ for host_p in host_percentage:
         # host.node_config.app.is_last = True
         
         client_hosts.append(host)
+        print(f'client ID: {client_node_id} IP: {client_ip} MAC: {node_config.force_mac_addr}')
+        print(f'send to server ID: {server_node_id} IP: {server_ip}')
+
 
     client_hosts[0].node_config.app.is_last = True
     client_hosts[0].wait = True
