@@ -67,6 +67,7 @@ for host_p in host_percentage:
     e.checkpoint = False
 
     net = sim.NS3FCTNet()
+    net.measuer_tput = measuer_tput
     net.opt = f'--k_value={k_value} --flow_size={flow_size} --detail_host_percent={host_p/100.0}'
     e.add_network(net)
 
