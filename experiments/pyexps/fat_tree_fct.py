@@ -27,18 +27,19 @@ import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
 
-host_percentage = [20, 30, 100]
+host_percentage = [10, 20, 30, 100]
 k_value = 4
 flow_size = 2
 measuer_tput = True
 
 # Fat Tree parameters derived from k_value. Not variables
-total_hosts = k_value * k_value * k_value / 4
 num_spine_sw = (k_value / 2) * (k_value / 2)
 num_pod = k_value
 num_agg_sw = k_value / 2
 racks_per_pod = k_value / 2 # num_tor_sw
-num_hosts_per_rack = k_value / 2
+# num_hosts_per_rack = k_value / 2
+num_hosts_per_rack = 8
+total_hosts = num_pod * racks_per_pod * num_hosts_per_rack
 
 experiments = []
 
@@ -67,7 +68,7 @@ for host_p in host_percentage:
     e.checkpoint = False
 
     net = sim.NS3FCTNet()
-    net.measuer_tput = measuer_tput
+    net.measure_tput = measuer_tput
     net.opt = f'--k_value={k_value} --flow_size={flow_size} --detail_host_percent={host_p/100.0}'
     e.add_network(net)
 
