@@ -27,9 +27,10 @@ import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
 
-host_percentage = [30]
+host_percentage = [20, 30, 100]
 k_value = 4
 flow_size = 2
+measuer_tput = True
 
 # Fat Tree parameters derived from k_value. Not variables
 total_hosts = k_value * k_value * k_value / 4
@@ -98,15 +99,17 @@ for host_p in host_percentage:
         server_node_id = int(starting_host_idx + i)
         server_ip = hostID_to_IP(server_node_id)
         gate_way_ip = hostID_to_IP(server_node_id, gate=True)
-        node_config.ip = server_ip
+        node_config.ip = server_ip            
         node_config.app = node.FCTServer()
         node_config.app.gate_way_ip = gate_way_ip
+        node_config.app.measure_tput = measuer_tput
         node_config.force_mac_addr = f'00:90:00:00:00:{server_node_id:02x}'
 
         host = sim.Gem5Host(node_config)
-        host.cpu_freq = "4GHz"
+        host.cpu_freq = "5GHz"
         host.name = f'server.{i}'
-        host.variant = 'opt'
+        host.variant = 'fast'
+        # host.cpu_type = 'X86KvmCPU'
 
         nic = sim.I40eNIC()
         e.add_nic(nic)
@@ -133,7 +136,8 @@ for host_p in host_percentage:
         gate_way_ip = hostID_to_IP(client_node_id, gate=True)
         node_config.ip = client_ip
         node_config.app = node.FCTClient()
-        node_config.app.rand_start = random.uniform(0, 2)
+        node_config.app.measure_tput = measuer_tput
+        node_config.app.rand_start = random.uniform(0, 0.002)
         node_config.app.gate_way_ip = gate_way_ip
         node_config.force_mac_addr = f'00:90:00:00:00:{client_node_id:02x}'
 
@@ -142,9 +146,10 @@ for host_p in host_percentage:
         node_config.app.server_ip = server_ip
 
         host = sim.Gem5Host(node_config)
-        host.cpu_freq = "4GHz"
+        host.cpu_freq = "5GHz"
         host.name = f'client.{i}'
-        host.variant = 'opt'
+        host.variant = 'fast'
+        # host.cpu_type = 'X86KvmCPU'
 
         nic = sim.I40eNIC()
         e.add_nic(nic)

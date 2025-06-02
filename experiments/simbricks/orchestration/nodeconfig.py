@@ -457,21 +457,36 @@ class FCTClient(AppConfig):
         self.is_last = False
         self.gate_way_ip = '10.0.0.1'
         self.rand_start = 0
+        self.measure_tput = False
 
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:
-        cmd = [
-            'mount -t proc proc /proc',
-            'mount -t sysfs sysfs /sys',
-            'sysctl -w net.ipv6.conf.all.disable_ipv6=1',
-            'sysctl -w net.ipv6.conf.default.disable_ipv6=1',
-            f'ip route add default via {self.gate_way_ip} dev eth0',
-               'ip route show',
-            f'sleep {self.rand_start}',
-            'sleep 0.5',
-            f'./client {self.server_ip} {self.flow_size}']
+        if self.measure_tput:
+            cmd = [
+                'mount -t proc proc /proc',
+                'mount -t sysfs sysfs /sys',
+                'sysctl -w net.ipv6.conf.all.disable_ipv6=1',
+                'sysctl -w net.ipv6.conf.default.disable_ipv6=1',
+                f'ip route add default via {self.gate_way_ip} dev eth0',
+                    'ip route show',
+                f'sleep {self.rand_start}',
+                f'iperf -w 1M -c {self.server_ip} -i 1'
+            ]
+        else:
+            cmd = [
+                    'mount -t proc proc /proc',
+                    'mount -t sysfs sysfs /sys',
+                    'sysctl -w net.ipv6.conf.all.disable_ipv6=1',
+                    'sysctl -w net.ipv6.conf.default.disable_ipv6=1',
+                    f'ip route add default via {self.gate_way_ip} dev eth0',
+                    'ip route show',
+                    # f'sleep {self.rand_start}',
+                    'sleep 0.5',
+                    # f'ping {self.server_ip} -c 10'
+                    f'./client {self.server_ip} {self.flow_size}'
+                ]
         
         if self.is_last:
-            cmd.append('sleep 2')
+            cmd.append('sleep 1')
         else:
             cmd.append('sleep infinity')
 
@@ -487,18 +502,30 @@ class FCTServer(AppConfig):
     def __init__(self):
         super().__init__()
         self.gate_way_ip = '10.0.0.1'
+        self.measure_tput = False
 
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:
-        return [
-            'mount -t proc proc /proc',
-            'mount -t sysfs sysfs /sys',
-            'sysctl -w net.ipv6.conf.all.disable_ipv6=1',
-            'sysctl -w net.ipv6.conf.default.disable_ipv6=1',
-            f'ip route add default via {self.gate_way_ip} dev eth0',
-            'ip route show',
-            './server',
-            'sleep infinity'
-        ]   
+        if self.measure_tput:
+            return [
+                'mount -t proc proc /proc',
+                'mount -t sysfs sysfs /sys',
+                'sysctl -w net.ipv6.conf.all.disable_ipv6=1',
+                'sysctl -w net.ipv6.conf.default.disable_ipv6=1',
+                f'ip route add default via {self.gate_way_ip} dev eth0',
+                'ip route show',
+                'iperf -s -w 1M'
+            ]   
+        else:
+            return [
+                'mount -t proc proc /proc',
+                'mount -t sysfs sysfs /sys',
+                'sysctl -w net.ipv6.conf.all.disable_ipv6=1',
+                'sysctl -w net.ipv6.conf.default.disable_ipv6=1',
+                f'ip route add default via {self.gate_way_ip} dev eth0',
+                'ip route show',
+                './server',
+                'sleep infinity'
+            ]   
 
     def config_files(self, environment: env.ExpEnv) -> tp.Dict[str, tp.IO]:
         path = f'{environment.repodir}/experiments/fct/server'
