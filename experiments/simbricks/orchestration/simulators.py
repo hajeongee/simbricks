@@ -1112,6 +1112,31 @@ class NS3BridgeNet(NetSim):
         return cmd
 
 
+class NS3FCTNetCluster(NetSim):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.measure_tput = False
+
+    def run_cmd(self, env: ExpEnv) -> str:
+        ports = ''
+        for (_, n) in self.connect_sockets(env):
+            ports += '--SimbricksPort=' + n + ' '
+
+        if self.measure_tput:
+            cmd = (
+                f'{env.repodir}/sims/external/ns-3'
+                f'/simbricks-run.sh tput_fat_c {ports} {self.opt}'
+            )
+        else: 
+            cmd = (
+                f'{env.repodir}/sims/external/ns-3'
+                f'/simbricks-run.sh fct_fat_c {ports} {self.opt}'
+            )
+        print(cmd)
+
+        return cmd
+
 class NS3FCTNet(NetSim):
 
     def __init__(self) -> None:
