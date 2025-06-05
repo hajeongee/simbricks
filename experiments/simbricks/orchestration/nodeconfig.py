@@ -469,7 +469,7 @@ class FCTClient(AppConfig):
                 f'ip route add default via {self.gate_way_ip} dev eth0',
                     'ip route show',
                 f'sleep {self.rand_start}',
-                f'iperf -w 1M -c {self.server_ip} -i 1'
+                f'iperf -w 1M -c {self.server_ip} -i 1 -t 6'
             ]
         else:
             cmd = [
